@@ -19,3 +19,5 @@ __pycache__/
 # SSH keys
 *.pem
 nt548-lab1
+tfplan
+*.tfplan

@@ -206,3 +206,28 @@ Xoá tài nguyên:
 - Đổi region, CIDR, loại instance: sửa `terraform/terraform.tfvars` hoặc tham số trong `cloudformation/main.yaml` (`--parameter-overrides`).
 - Mở thêm port cho Private EC2 (Terraform): biến `private_ingress_ports` của module `security_groups`, ví dụ `[22, 80]`.
 - AMI mặc định là Amazon Linux 2023 mới nhất, lấy qua SSM Parameter Store nên không bị cũ.
+
+## Kết quả
+
+Đã triển khai thật trên AWS (region `ap-southeast-1`, Amazon Linux 2023, `t3.micro`) bằng cả hai công cụ, chạy test rồi xoá toàn bộ tài nguyên.
+
+| Kiểm tra | Terraform | CloudFormation |
+|---|---|---|
+| Triển khai | `Apply complete! Resources: 23 added` | Stack gốc + 6 nested stack `CREATE_COMPLETE` (module EC2 dùng lại cho Public và Private) |
+| Test hạ tầng thật (`tests/test_deployed_infra.py`) | **18/18 passed** | **18/18 passed** |
+| SSH vào Public EC2 từ Internet (chỉ từ IP `/32` được cho phép) | ✅ | ✅ |
+| SSH vào Private EC2 qua Public EC2 (ProxyJump) | ✅ | ✅ |
+| Private EC2 không có Public IP | ✅ | ✅ |
+| Private EC2 ra Internet qua NAT (IP nhìn thấy = Elastic IP của NAT) | ✅ | ✅ |
+| Xoá tài nguyên (`terraform destroy` / `destroy.sh`) | ✅ | ✅ |
+
+Số test theo từng dịch vụ (giống nhau cho cả hai công cụ):
+
+| Dịch vụ | Số test | Nội dung |
+|---|---|---|
+| VPC | 6 | VPC available, bật DNS; Public/Private Subnet; Internet Gateway attached; Default SG chỉ cho phép traffic nội bộ |
+| NAT Gateway | 1 | Available, nằm trong Public Subnet, có Elastic IP |
+| Route Tables | 2 | Public RT → IGW, Private RT → NAT, gắn đúng subnet |
+| Security Groups | 2 | Public SG chỉ SSH 22 từ 1 IP `/32`; Private SG chỉ nhận từ Public SG |
+| EC2 | 4 | Public có Public IP, Private không có; IMDSv2 bắt buộc trên cả hai |
+| Kết nối thực tế | 3 | SSH Public, SSH Private qua Public, Private ra Internet qua NAT |

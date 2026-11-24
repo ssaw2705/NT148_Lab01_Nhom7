@@ -1,0 +1,127 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  NT548 Lab1 - Stack goc: ghep cac module (nested stacks) VPC, NAT Gateway,
+  Route Tables, Security Groups, EC2. Dong goi bang `aws cloudformation package`.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: nt548-lab1
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+  PrivateSubnetCidr:
+    Type: String
+    Default: 10.0.2.0/24
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+  AllowedSshCidr:
+    Type: String
+    Description: IP duy nhat duoc SSH vao Public EC2 (x.x.x.x/32)
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}/32$
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Ten EC2 Key Pair co san
+  InstanceType:
+    Type: String
+    Default: t3.micro
+
+Resources:
+  VpcStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/vpc.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcCidr: !Ref VpcCidr
+        PublicSubnetCidr: !Ref PublicSubnetCidr
+        PrivateSubnetCidr: !Ref PrivateSubnetCidr
+        AvailabilityZone: !Ref AvailabilityZone
+
+  NatGatewayStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/nat-gateway.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        PublicSubnetId: !GetAtt VpcStack.Outputs.PublicSubnetId
+
+  RouteTablesStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/route-tables.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt VpcStack.Outputs.VpcId
+        PublicSubnetId: !GetAtt VpcStack.Outputs.PublicSubnetId
+        PrivateSubnetId: !GetAtt VpcStack.Outputs.PrivateSubnetId
+        InternetGatewayId: !GetAtt VpcStack.Outputs.InternetGatewayId
+        NatGatewayId: !GetAtt NatGatewayStack.Outputs.NatGatewayId
+
+  SecurityGroupsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: templates/security-groups.yaml
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt VpcStack.Outputs.VpcId
+        AllowedSshCidr: !Ref AllowedSshCidr
+
+  PublicEc2Stack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: RouteTablesStack
+    Properties:
+      TemplateURL: templates/ec2.yaml
+      Parameters:
+        InstanceName: !Sub ${ProjectName}-public-ec2
+        InstanceType: !Ref InstanceType
+        SubnetId: !GetAtt VpcStack.Outputs.PublicSubnetId
+        SecurityGroupId: !GetAtt SecurityGroupsStack.Outputs.PublicSecurityGroupId
+        KeyName: !Ref KeyName
+        AssociatePublicIp: "true"
+
+  PrivateEc2Stack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: RouteTablesStack
+    Properties:
+      TemplateURL: templates/ec2.yaml
+      Parameters:
+        InstanceName: !Sub ${ProjectName}-private-ec2
+        InstanceType: !Ref InstanceType
+        SubnetId: !GetAtt VpcStack.Outputs.PrivateSubnetId
+        SecurityGroupId: !GetAtt SecurityGroupsStack.Outputs.PrivateSecurityGroupId
+        KeyName: !Ref KeyName
+        AssociatePublicIp: "false"
+
+Outputs:
+  VpcId:
+    Value: !GetAtt VpcStack.Outputs.VpcId
+  PublicSubnetId:
+    Value: !GetAtt VpcStack.Outputs.PublicSubnetId
+  PrivateSubnetId:
+    Value: !GetAtt VpcStack.Outputs.PrivateSubnetId
+  InternetGatewayId:
+    Value: !GetAtt VpcStack.Outputs.InternetGatewayId
+  DefaultSecurityGroupId:
+    Value: !GetAtt VpcStack.Outputs.DefaultSecurityGroupId
+  NatGatewayId:
+    Value: !GetAtt NatGatewayStack.Outputs.NatGatewayId
+  PublicRouteTableId:
+    Value: !GetAtt RouteTablesStack.Outputs.PublicRouteTableId
+  PrivateRouteTableId:
+    Value: !GetAtt RouteTablesStack.Outputs.PrivateRouteTableId
+  PublicSecurityGroupId:
+    Value: !GetAtt SecurityGroupsStack.Outputs.PublicSecurityGroupId
+  PrivateSecurityGroupId:
+    Value: !GetAtt SecurityGroupsStack.Outputs.PrivateSecurityGroupId
+  PublicInstanceId:
+    Value: !GetAtt PublicEc2Stack.Outputs.InstanceId
+  PublicInstancePublicIp:
+    Value: !GetAtt PublicEc2Stack.Outputs.PublicIp
+  PrivateInstanceId:
+    Value: !GetAtt PrivateEc2Stack.Outputs.InstanceId
+  PrivateInstancePrivateIp:
+    Value: !GetAtt PrivateEc2Stack.Outputs.PrivateIp

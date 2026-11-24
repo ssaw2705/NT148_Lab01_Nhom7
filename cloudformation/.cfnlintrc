@@ -1,0 +1,5 @@
+templates:
+  - main.yaml
+  - templates/*.yaml
+ignore_checks:
+  - W3002 # TemplateURL local path, duoc xu ly boi `aws cloudformation package`

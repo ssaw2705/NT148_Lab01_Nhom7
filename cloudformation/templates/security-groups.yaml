@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: NT548 Lab1 - Module Security Groups (Public EC2 SG, Private EC2 SG)
+
+Parameters:
+  ProjectName:
+    Type: String
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  AllowedSshCidr:
+    Type: String
+    Description: IP duy nhat duoc SSH vao Public EC2 (x.x.x.x/32)
+    AllowedPattern: ^(\d{1,3}\.){3}\d{1,3}/32$
+    ConstraintDescription: Phai la mot IP cu the dang x.x.x.x/32
+
+Resources:
+  # Public EC2 SG: chi cho SSH (22) tu mot IP cu the
+  PublicEc2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-public-ec2-sg
+      GroupDescription: Allow SSH only from a specific IP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedSshCidr
+          Description: SSH from allowed IP
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-public-ec2-sg
+
+  # Private EC2 SG: chi nhan SSH/ICMP tu instance mang Public EC2 SG
+  PrivateEc2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-private-ec2-sg
+      GroupDescription: Allow inbound only from the Public EC2 security group
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicEc2SecurityGroup
+          Description: SSH from Public EC2 SG
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          SourceSecurityGroupId: !Ref PublicEc2SecurityGroup
+          Description: ICMP (ping) from Public EC2 SG
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound (to Internet via NAT)
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-private-ec2-sg
+
+Outputs:
+  PublicSecurityGroupId:
+    Value: !Ref PublicEc2SecurityGroup
+  PrivateSecurityGroupId:
+    Value: !Ref PrivateEc2SecurityGroup

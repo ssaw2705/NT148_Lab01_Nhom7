@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: NT548 Lab1 - Module NAT Gateway (Elastic IP + NAT Gateway trong Public Subnet)
+
+Parameters:
+  ProjectName:
+    Type: String
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+  NatEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-nat-eip
+
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnetId
+      ConnectivityType: public
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-nat
+
+Outputs:
+  NatGatewayId:
+    Value: !Ref NatGateway
+  NatPublicIp:
+    Value: !Ref NatEip

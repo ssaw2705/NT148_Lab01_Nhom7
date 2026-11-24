@@ -1,0 +1,7 @@
+[
+  { "ParameterKey": "ProjectName", "ParameterValue": "nt548-lab1" },
+  { "ParameterKey": "AvailabilityZone", "ParameterValue": "ap-southeast-1a" },
+  { "ParameterKey": "AllowedSshCidr", "ParameterValue": "203.0.113.10/32" },
+  { "ParameterKey": "KeyName", "ParameterValue": "nt548-lab1-key" },
+  { "ParameterKey": "InstanceType", "ParameterValue": "t3.micro" }
+]

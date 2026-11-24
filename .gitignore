@@ -1,0 +1,21 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+
+# CloudFormation build
+cloudformation/build/
+cloudformation/parameters.json
+
+# Python
+__pycache__/
+.pytest_cache/
+.venv/
+
+# SSH keys
+*.pem
+nt548-lab1
